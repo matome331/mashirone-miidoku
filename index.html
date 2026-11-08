@@ -157,6 +157,7 @@ details ul{margin:6px 0 2px;padding-left:1.2em;font-weight:700}
       <li>たて・よこ・色のエリアそれぞれに<br>ましろねーずを1匹ずつ置く</li>
       <li>サーモンのマスには置けない<br>数字はまわり8マスにいる猫の数</li>
       <li>数字は、そのエリアに猫を置くと出てくる</li>
+      <li>10問クリアでゴール</li>
     </ul>
     <p class="rh">操作</p>
     <ul>
@@ -184,6 +185,15 @@ details ul{margin:6px 0 2px;padding-left:1.2em;font-weight:700}
     <h2>クリア！</h2>
     <div id="winMsg" class="msg"></div>
     <button type="button" id="bNext">つぎの問題</button>
+  </div>
+</div>
+
+<div class="win" id="result" hidden>
+  <div class="card">
+    <div class="pair"><svg class="cat-w"><use href="#cat"/></svg><svg class="cat-w"><use href="#cat"/></svg><svg class="cat-w"><use href="#cat"/></svg></div>
+    <h2>10問クリア！</h2>
+    <div id="resultMsg" class="msg"></div>
+    <button type="button" id="bAgain">もう一回あそぶ</button>
   </div>
 </div>
 
@@ -608,8 +618,11 @@ function record(pt){
 }
 
 // ハートとクリア数は問題をまたいで持ち越す（ページを開き直しても続き）
-function saveRun(){ try{ localStorage.setItem('mimidoku-run',JSON.stringify({hearts,cleared,lives})); }catch(e){} }
-try{ const r=JSON.parse(localStorage.getItem('mimidoku-run')||'null'); if(r&&r.hearts>0){ hearts=r.hearts; cleared=r.cleared||0; if(r.lives>=0&&r.lives<=3) lives=r.lives; } }catch(e){}
+// 10問クリアでゴール。合計タイムはクリアした問題の分だけ足していく
+const GOAL=10;
+let runSec=0;
+function saveRun(){ try{ localStorage.setItem('mimidoku-run',JSON.stringify({hearts,cleared,lives,runSec})); }catch(e){} }
+try{ const r=JSON.parse(localStorage.getItem('mimidoku-run')||'null'); if(r&&r.hearts>0){ hearts=r.hearts; cleared=r.cleared||0; if(r.lives>=0&&r.lives<=3) lives=r.lives; runSec=r.runSec||0; } }catch(e){}
 
 // せってい：エリアの境目を太線にする
 let walls=false;
@@ -618,9 +631,9 @@ try{ walls=localStorage.getItem('mimidoku-walls')==='1'; }catch(e){}
 let replay=false;
 function newGame(n,same){
   replay=!!same;
-  if(hearts<=0){ hearts=3; lives=3; cleared=0; saveRun(); }
+  if(hearts<=0||cleared>=GOAL){ hearts=3; lives=3; cleared=0; runSec=0; saveRun(); }
   // カフェオレは問題をまたいで持ち越す（満タンに戻るのはゲームオーバーからのやり直しだけ）
-  N=n||N; won=false; misses=0; missed.clear(); hintsUsed=0; $('win').hidden=true; $('lose').hidden=true;
+  N=n||N; won=false; misses=0; missed.clear(); hintsUsed=0; $('win').hidden=true; $('lose').hidden=true; $('result').hidden=true;
   ['sz4','sz5','sz6'].forEach(id=>$(id).setAttribute('aria-pressed',$(id).dataset.n==N));
   DIAG=wantDiag&&N>4;
   if(!same){ pz=generate(N,tierOf(N)); ctx=makeCtx(pz);
@@ -706,11 +719,19 @@ function afterMove(){
   lastPlaced=false;
   let ok=true; for(let r=0;r<N;r++) if(P[r*N+pz.sol[r]]!==2) ok=false;
   if(ok&&P.filter(v=>v===2).length===N){
-    won=true; clearInterval(timer); SFX.finish('clear','jclear',.12); if(!replay) record(perf()); cleared++; saveRun();
-    say('できた〜！サーモン、みんなでわけわけしよか♪',{tip:false}); phrases($('winMsg'),[`タイム ${$('stTime').textContent} ／`,`${N}×${N} ／`,`${cleared}問目クリア ／`,`ハートのこり${hearts}`]); $('win').hidden=false; $('bNext').focus();
+    won=true; clearInterval(timer); SFX.finish('clear','jclear',.12); if(!replay) record(perf()); cleared++; runSec+=Math.round((Date.now()-t0)/1000); saveRun();
+    if(cleared>=GOAL){ showResult(); return; }
+    say('できた〜！サーモン、みんなでわけわけしよか♪',{tip:false}); phrases($('winMsg'),[`タイム ${$('stTime').textContent} ／`,`${N}×${N} ／`,`${cleared}/${GOAL}問クリア ／`,`ハートのこり${hearts}`]); $('win').hidden=false; $('bNext').focus();
   }
 }
 
+// 10問クリアのリザルト
+function showResult(){
+  const s=runSec;
+  say('すごい！10問ぜんぶクリアや〜♪',{tip:false});
+  phrases($('resultMsg'),[`合計タイム ${(s/60)|0}:${String(s%60).padStart(2,'0')} ／`,`ハートのこり${hearts} ／`,`カフェオレのこり${lives}杯`]);
+  $('result').hidden=false; $('bAgain').focus();
+}
 // スマホ：タップで「×」→「猫」（×を消すのは「もどす」）。PC：左クリックで猫、右クリックで×（もう一度で空に戻す）
 function tapCell(e,mode){
   const b=e.target.closest('.cell'); if(!b||won)return; const i=+b.dataset.i;
@@ -814,10 +835,11 @@ $('bUndo').onclick=()=>{ if(!hist.length||won)return; SFX.confirm('undo','undo')
 $('bReset').onclick=()=>{ if(won)return; hist=[]; startBoard(); hint=null; render(); say('最初からやね、ゆっくりいこ〜'); };
 $('bNew').onclick=()=>newGame();
 $('bNext').onclick=()=>{ SFX.confirm('next','next'); newGame(); };
-const retry=same=>{ SFX.confirm('next','next'); hearts=3; lives=3; cleared=0; saveRun(); newGame(undefined,same); if(Math.random()<.5) say('ハートもカフェオレも満タンにしてきたで〜'); };
+$('bAgain').onclick=()=>{ SFX.confirm('next','next'); newGame(); };
+const retry=same=>{ SFX.confirm('next','next'); hearts=3; lives=3; cleared=0; runSec=0; saveRun(); newGame(undefined,same); if(Math.random()<.5) say('ハートもカフェオレも満タンにしてきたで〜'); };
 $('bRetry').onclick=()=>retry(true);
 $('bRetryNew').onclick=()=>retry(false);
-['bNext','bRetry','bRetryNew'].forEach(id=>$(id).addEventListener('pointerdown',()=>SFX.early('next','next')));
+['bNext','bRetry','bRetryNew','bAgain'].forEach(id=>$(id).addEventListener('pointerdown',()=>SFX.early('next','next')));
 document.querySelectorAll('.size button[data-n]').forEach(b=>b.onclick=()=>newGame(+b.dataset.n));
 // ななめNGモードは今はお休み（wantDiag=true で復活できる）
 newGame(6);
