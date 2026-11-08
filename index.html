@@ -731,11 +731,52 @@ function afterMove(){
   }
 }
 
+// ---- 10問クリアの結果画像（Xでポストに使う） ----
+let resultFile=null;
+function roundRect(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+// 画面の猫（#cat の図形）をそのままキャンバスに描く。色の変数は白猫の色に置きかえる
+function drawCat(g,x,y,size,ink){
+  const sym=$('cat'), vb=sym.getAttribute('viewBox').split(/\s+/).map(Number), k=size/vb[2];
+  const col=c=>{ if(!c||c==='none') return null; const m=c.match(/^var\((--[\w-]+)\)$/); return m ? ({'--cf':'#ffffff','--cs':ink,'--ce':ink})[m[1]]||ink : c; };
+  g.save(); g.translate(x,y); g.scale(k,k);
+  for(const el of sym.children){
+    let p;
+    if(el.tagName==='path') p=new Path2D(el.getAttribute('d'));
+    else if(el.tagName==='ellipse'){ p=new Path2D(); p.ellipse(+el.getAttribute('cx'),+el.getAttribute('cy'),+el.getAttribute('rx'),+el.getAttribute('ry'),0,0,Math.PI*2); }
+    else continue;
+    g.globalAlpha=+(el.getAttribute('opacity')||1);
+    const f=col(el.getAttribute('fill')), st=col(el.getAttribute('stroke'));
+    if(f){ g.fillStyle=f; g.fill(p); }
+    if(st){ g.strokeStyle=st; g.lineWidth=+(el.getAttribute('stroke-width')||1); g.lineJoin=el.getAttribute('stroke-linejoin')||'miter'; g.lineCap=el.getAttribute('stroke-linecap')||'butt'; g.stroke(p); }
+  }
+  g.restore();
+}
+async function makeResultImage(timeText){
+  resultFile=null;
+  try{
+    const W=1200,H=675, cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const g=cv.getContext('2d'), css=getComputedStyle(document.documentElement), v=n=>css.getPropertyValue(n).trim();
+    const F='"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif';
+    try{ await Promise.all(['700','900'].map(w=>document.fonts.load(w+' 40px "Zen Maru Gothic"','10問クリア！合計タイム0123456789:ハートのこりカフェオレ杯／みぃどくサーモンねこならべ'))); }catch(e){}
+    g.fillStyle=v('--bg'); g.fillRect(0,0,W,H);
+    g.fillStyle='#ffffff'; roundRect(g,150,40,900,595,48); g.fill();
+    [-140,0,140].forEach(dx=>drawCat(g,W/2+dx-60,72,120,v('--ink')));
+    g.textAlign='center'; g.textBaseline='alphabetic';
+    g.fillStyle=v('--ink'); g.font='900 64px '+F; g.fillText('10問クリア！',W/2,272);
+    g.fillStyle=v('--muted'); g.font='700 28px '+F; g.fillText('合計タイム',W/2,336);
+    g.fillStyle=v('--salmon'); g.font='900 128px '+F; g.fillText(timeText,W/2,460);
+    g.fillStyle=v('--ink'); g.font='700 32px '+F; g.fillText('ハートのこり'+hearts+' ／ カフェオレのこり'+lives+'杯',W/2,530);
+    g.fillStyle=v('--muted'); g.font='700 26px '+F; g.fillText((document.title||'みぃどく')+'　サーモンねこならべ',W/2,598);
+    const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
+    if(blob) resultFile=new File([blob],'miidoku-result.png',{type:'image/png'});
+  }catch(e){ resultFile=null; }
+}
 // 10問クリアのリザルト
 function showResult(){
   const s=runSec;
   say('すごい！10問ぜんぶクリアや〜♪',{tip:false});
   $('resultTime').textContent=`${(s/60)|0}:${String(s%60).padStart(2,'0')}`;
+  makeResultImage($('resultTime').textContent);
   phrases($('resultMsg'),[`ハートのこり${hearts} ／`,`カフェオレのこり${lives}杯`]);
   $('result').hidden=false; $('bAgain').focus();
 }
@@ -843,13 +884,22 @@ $('bReset').onclick=()=>{ if(won)return; hist=[]; startBoard(); hint=null; rende
 $('bNew').onclick=()=>newGame();
 $('bNext').onclick=()=>{ SFX.confirm('next','next'); newGame(); };
 $('bAgain').onclick=()=>{ SFX.confirm('next','next'); newGame(); };
-// X の投稿画面を新しいタブで開く。URL は今開いているページ（GitHub Pages 以外で開いた時は公開先）
+// Xでポスト。URL は今開いているページ（GitHub Pages 以外で開いた時は公開先）
 const SHARE_URL='https://matome331.github.io/mashirone-miidoku/';
 $('bPost').onclick=()=>{
-  const url=/.github.io$/.test(location.hostname) ? location.origin+location.pathname : SHARE_URL;
-  const title=document.title||'みぃどく';
-  const text=`${title}で10問クリアしたよ！
-合計タイム ${$('resultTime').textContent}`;
+  const url=/\.github\.io$/.test(location.hostname) ? location.origin+location.pathname : SHARE_URL;
+  const text=(document.title||'みぃどく')+'で10問クリアしたよ！\n合計タイム '+$('resultTime').textContent;
+  // スマホ：共有画面から画像ごと X へ（押した瞬間に呼ぶ必要があるので、画像は結果画面を出した時に作っておく）
+  if(resultFile && !finePointer() && navigator.canShare && navigator.canShare({files:[resultFile]})){
+    navigator.share({files:[resultFile],text:text+'\n'+url}).catch(()=>{});
+    return;
+  }
+  // PC：画像を保存して、X の投稿画面を開く（画像は投稿画面に自分で添付する）
+  if(resultFile){
+    const a=document.createElement('a'); a.href=URL.createObjectURL(resultFile); a.download=resultFile.name;
+    document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+    say('結果の画像を保存したで、ポストに付けてな',{tip:false});
+  }
   window.open('https://x.com/intent/post?text='+encodeURIComponent(text)+'&url='+encodeURIComponent(url),'_blank','noopener');
 };
 const retry=same=>{ SFX.confirm('next','next'); hearts=3; lives=3; cleared=0; runSec=0; saveRun(); newGame(undefined,same); if(Math.random()<.5) say('ハートもカフェオレも満タンにしてきたで〜'); };
