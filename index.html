@@ -889,18 +889,15 @@ const SHARE_URL='https://matome331.github.io/mashirone-miidoku/';
 $('bPost').onclick=()=>{
   const url=/\.github\.io$/.test(location.hostname) ? location.origin+location.pathname : SHARE_URL;
   const text=(document.title||'みぃどく')+'で10問クリアしたよ！\n合計タイム '+$('resultTime').textContent;
+  const openIntent=()=>window.open('https://x.com/intent/post?text='+encodeURIComponent(text)+'&url='+encodeURIComponent(url),'_blank','noopener');
   // スマホ：共有画面から画像ごと X へ（押した瞬間に呼ぶ必要があるので、画像は結果画面を出した時に作っておく）
   if(resultFile && !finePointer() && navigator.canShare && navigator.canShare({files:[resultFile]})){
-    navigator.share({files:[resultFile],text:text+'\n'+url}).catch(()=>{});
+    // 取り消し以外で共有できなかった時は、文とURLだけの投稿画面にする
+    navigator.share({files:[resultFile],text:text+'\n'+url}).catch(e=>{ if(e&&e.name!=='AbortError') openIntent(); });
     return;
   }
-  // PC：画像を保存して、X の投稿画面を開く（画像は投稿画面に自分で添付する）
-  if(resultFile){
-    const a=document.createElement('a'); a.href=URL.createObjectURL(resultFile); a.download=resultFile.name;
-    document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),10000);
-    say('結果の画像を保存したで、ポストに付けてな',{tip:false});
-  }
-  window.open('https://x.com/intent/post?text='+encodeURIComponent(text)+'&url='+encodeURIComponent(url),'_blank','noopener');
+  // 共有できない時（PCなど）：文とURLだけで X の投稿画面を開く
+  openIntent();
 };
 const retry=same=>{ SFX.confirm('next','next'); hearts=3; lives=3; cleared=0; runSec=0; saveRun(); newGame(undefined,same); if(Math.random()<.5) say('ハートもカフェオレも満タンにしてきたで〜'); };
 $('bRetry').onclick=()=>retry(true);
