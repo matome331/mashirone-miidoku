@@ -88,6 +88,8 @@ details ul{margin:6px 0 2px;padding-left:1.2em;font-weight:700}
 .win{position:fixed;inset:0;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 70%,transparent);padding:24px;z-index:20}
 .win .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px 22px 18px;text-align:center;max-width:320px;display:grid;gap:10px}
 .win h2{margin:0;font-weight:900;font-size:1.5rem}
+.bigtime{font-weight:900;font-size:2.6rem;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--salmon)}
+.bigtime small{display:block;font-size:.78rem;font-weight:700;color:var(--muted);letter-spacing:.08em;margin-bottom:2px}
 .win .pair{display:flex;justify-content:center;gap:6px}
 .win .pair svg{width:56px;height:56px}
 .win button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:11px;background:var(--salmon);color:var(--salmon-ink);cursor:pointer}
@@ -192,6 +194,7 @@ details ul{margin:6px 0 2px;padding-left:1.2em;font-weight:700}
   <div class="card">
     <div class="pair"><svg class="cat-w"><use href="#cat"/></svg><svg class="cat-w"><use href="#cat"/></svg><svg class="cat-w"><use href="#cat"/></svg></div>
     <h2>10問クリア！</h2>
+    <div class="bigtime"><small>合計タイム</small><span id="resultTime"></span></div>
     <div id="resultMsg" class="msg"></div>
     <button type="button" id="bAgain">もう一回あそぶ</button>
   </div>
@@ -729,7 +732,8 @@ function afterMove(){
 function showResult(){
   const s=runSec;
   say('すごい！10問ぜんぶクリアや〜♪',{tip:false});
-  phrases($('resultMsg'),[`合計タイム ${(s/60)|0}:${String(s%60).padStart(2,'0')} ／`,`ハートのこり${hearts} ／`,`カフェオレのこり${lives}杯`]);
+  $('resultTime').textContent=`${(s/60)|0}:${String(s%60).padStart(2,'0')}`;
+  phrases($('resultMsg'),[`ハートのこり${hearts} ／`,`カフェオレのこり${lives}杯`]);
   $('result').hidden=false; $('bAgain').focus();
 }
 // スマホ：タップで「×」→「猫」（×を消すのは「もどす」）。PC：左クリックで猫、右クリックで×（もう一度で空に戻す）
