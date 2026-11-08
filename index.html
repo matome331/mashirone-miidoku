@@ -32,7 +32,7 @@ h1 small{display:block;font-size:.72rem;font-weight:700;color:var(--muted);lette
 
 .talk{display:grid}
 .line{display:flex;gap:8px;align-items:flex-start}
-.ava{width:44px;height:44px;flex:none}
+.ava{width:var(--ava,44px);height:var(--ava,44px);flex:none}
 .bub{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:7px 11px;font-size:.88rem;line-height:1.5;min-width:0}
 .line.m .bub{border-top-left-radius:4px}
 .bub{height:calc(1.5em*3 + 14px);box-sizing:border-box;flex:1;overflow:hidden}
@@ -673,6 +673,7 @@ function render(){
       if(r<N-1&&pz.reg[i]!==pz.reg[i+N]) d+=`M${c} ${r+1}H${c+1}`; }
     bd.insertAdjacentHTML('beforeend',`<svg class="walls" viewBox="0 0 ${N} ${N}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}"/></svg>`);
   }
+  sizeAva();
   $('stCats').textContent=`${P.filter(v=>v===2).length} / ${N}`;
   $('stHearts').innerHTML=[0,1,2].map(k=>`<svg class="heart${k>=hearts?' empty':''}${k===lostHeart?' lost':''}"><use href="#heart"/></svg>`).join(''); lostHeart=-1;
   $('stHearts').setAttribute('aria-label',`ハート のこり${hearts}`);
@@ -681,6 +682,13 @@ function render(){
   $('bHint').disabled=lives<=0;
 }
 
+// 吹き出しの猫の大きさ＝盤面の猫（マスの78%）。吹き出しより大きいと段が伸びるので、吹き出しの高さまでにする
+function sizeAva(){
+  const c=$('board').firstElementChild, bub=document.querySelector('#talk .bub'); if(!c) return;
+  let s=c.offsetWidth*.78; if(bub) s=Math.min(s,bub.offsetHeight);
+  if(s>0) $('talk').style.setProperty('--ava',Math.round(s)+'px');
+}
+window.addEventListener('resize',sizeAva);
 let lastPlaced=false;
 function setCell(i,v){ hist.push(P.slice()); P[i]=v; hint=null; lastPlaced=(v===2); afterMove(); }
 function startBoard(){ P=new Array(N*N).fill(0); P[pz.given]=2; R.clear(); fresh.clear(); reveal(); fresh.clear(); }
