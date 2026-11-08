@@ -88,7 +88,8 @@ details ul{margin:6px 0 2px;padding-left:1.2em;font-weight:700}
 .win{position:fixed;inset:0;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 70%,transparent);padding:24px;z-index:20}
 .win .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px 22px 18px;text-align:center;max-width:320px;display:grid;gap:10px}
 .win h2{margin:0;font-weight:900;font-size:1.5rem}
-.win button.post{justify-self:center;background:none;color:var(--muted);border:1px solid var(--line);font-size:.8rem;padding:6px 16px;border-radius:999px}
+.win button.post .xlogo{width:.95em;height:.95em;fill:#000;flex:none}
+.win button.post{display:inline-flex;align-items:center;gap:5px;justify-self:center;background:none;color:var(--muted);border:1px solid var(--line);font-size:.8rem;padding:6px 16px;border-radius:999px}
 .bigtime{font-weight:900;font-size:2.6rem;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--salmon)}
 .bigtime small{display:block;font-size:.78rem;font-weight:700;color:var(--muted);letter-spacing:.08em;margin-bottom:2px}
 .win .pair{display:flex;justify-content:center;gap:6px}
@@ -198,7 +199,7 @@ details ul{margin:6px 0 2px;padding-left:1.2em;font-weight:700}
     <div class="bigtime"><small>合計タイム</small><span id="resultTime"></span></div>
     <div id="resultMsg" class="msg"></div>
     <button type="button" id="bAgain">もう一回あそぶ</button>
-    <button type="button" id="bPost" class="post">Xでポスト</button>
+    <button type="button" id="bPost" class="post" aria-label="Xでポスト"><svg class="xlogo" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>でポスト</button>
   </div>
 </div>
 
